@@ -2,10 +2,15 @@ import os
 import sys
 import threading
 import subprocess
+import shutil
 import customtkinter as ctk
 from tkinter import filedialog, messagebox
 from pydub import AudioSegment
 from pydub.utils import mediainfo
+
+# 修正 macOS 打包後的 PATH 問題，確保能找到 ffmpeg
+# 許多 macOS App 不會繼承 Shell 的 PATH，導致 pydub 找不到 ffmpeg
+os.environ["PATH"] += os.pathsep + "/usr/local/bin" + os.pathsep + "/opt/homebrew/bin" + os.pathsep + "/usr/bin"
 
 # 初始化主題
 ctk.set_appearance_mode("System")
@@ -18,6 +23,10 @@ class AudioShrinkerApp(ctk.CTk):
         self.title("錄音縮小大師 Pro (批次版)")
         self.geometry("600x750")
         
+        # 檢查 ffmpeg 是否存在
+        if not shutil.which("ffmpeg") or not shutil.which("ffprobe"):
+            messagebox.showerror("錯誤", "找不到 ffmpeg 或 ffprobe！\n請確保已安裝 ffmpeg (例如透過 brew install ffmpeg)。\n程式可能無法正常運作。")
+
         # 資料變數
         self.files = []  # List of dict: {'path': str, 'size_mb': float, 'duration': float, 'tags': dict}
         self.total_size_mb = 0.0
@@ -73,11 +82,15 @@ class AudioShrinkerApp(ctk.CTk):
 
         self.slider = ctk.CTkSlider(self, from_=32, to=320, number_of_steps=9, command=self.on_slider_change)
         self.slider.set(self.target_bitrate)
-        self.slider.grid(row=4, column=0, padx=20, pady=10)
+        self.slider.grid(row=4, column=0, padx=20, pady=5)
+        
+        self.label_hint = ctk.CTkLabel(self, text="", text_color="#555555", font=ctk.CTkFont(size=12, slant="italic"))
+        self.label_hint.grid(row=5, column=0, padx=20, pady=(0, 10))
+        self.update_hint(self.target_bitrate)
 
         # 5. 統計資訊
         self.info_frame = ctk.CTkFrame(self)
-        self.info_frame.grid(row=5, column=0, padx=40, pady=10, sticky="nsew")
+        self.info_frame.grid(row=6, column=0, padx=40, pady=10, sticky="nsew")
         self.info_frame.grid_columnconfigure(0, weight=1)
 
         self.label_stats = ctk.CTkLabel(self.info_frame, text="已選 0 個檔案 | 總大小: 0 MB")
@@ -89,7 +102,7 @@ class AudioShrinkerApp(ctk.CTk):
 
         # 6. 執行與取消
         self.frame_actions = ctk.CTkFrame(self, fg_color="transparent")
-        self.frame_actions.grid(row=6, column=0, padx=20, pady=20)
+        self.frame_actions.grid(row=7, column=0, padx=20, pady=20)
         
         self.btn_run = ctk.CTkButton(self.frame_actions, text="開始批次轉檔", command=self.start_conversion, 
                                      fg_color="#2c6e49", hover_color="#1e462f", state="disabled")
@@ -102,10 +115,10 @@ class AudioShrinkerApp(ctk.CTk):
         # 7. 進度與狀態
         self.progress = ctk.CTkProgressBar(self, width=450)
         self.progress.set(0)
-        self.progress.grid(row=7, column=0, padx=20, pady=10)
+        self.progress.grid(row=8, column=0, padx=20, pady=10)
 
         self.label_status = ctk.CTkLabel(self, text="準備就緒", font=ctk.CTkFont(size=11))
-        self.label_status.grid(row=8, column=0, padx=20, pady=5)
+        self.label_status.grid(row=9, column=0, padx=20, pady=5)
 
     def choose_output_dir(self):
         path = filedialog.askdirectory()
@@ -132,6 +145,7 @@ class AudioShrinkerApp(ctk.CTk):
 
     def _analyze_files_thread(self, paths):
         new_files = []
+        errors = []
         for path in paths:
             # Check if already added
             if any(f['path'] == path for f in self.files):
@@ -162,13 +176,13 @@ class AudioShrinkerApp(ctk.CTk):
                     'tags': tags
                 })
             except Exception as e:
-                print(f"Skipping {path}: {e}")
+                errors.append(f"{os.path.basename(path)}: {str(e)}")
 
         # Update data
         self.files.extend(new_files)
-        self.after(0, self._update_ui_after_analysis)
+        self.after(0, lambda: self._update_ui_after_analysis(errors))
 
-    def _update_ui_after_analysis(self):
+    def _update_ui_after_analysis(self, errors):
         # Refresh File List UI
         self.txt_filelist.configure(state="normal")
         self.txt_filelist.delete("1.0", "end")
@@ -189,6 +203,12 @@ class AudioShrinkerApp(ctk.CTk):
         self.label_stats.configure(text=f"已選 {len(self.files)} 個檔案 | 總大小: {self.total_size_mb:.2f} MB")
         self.update_prediction()
         
+        if errors:
+            err_msg = "\n".join(errors[:5])
+            if len(errors) > 5:
+                err_msg += f"\n... 以及其他 {len(errors)-5} 個錯誤"
+            messagebox.showwarning("部分檔案讀取失敗", f"以下檔案無法讀取：\n{err_msg}")
+
         self.label_status.configure(text="分析完成")
         self.btn_select.configure(state="normal")
         self.btn_run.configure(state="normal" if self.files else "disabled")
@@ -196,7 +216,23 @@ class AudioShrinkerApp(ctk.CTk):
     def on_slider_change(self, value):
         self.target_bitrate = int(value)
         self.label_bitrate.configure(text=f"目標品質 (Bitrate): {self.target_bitrate} kbps")
+        self.update_hint(self.target_bitrate)
         self.update_prediction()
+
+    def update_hint(self, bitrate):
+        if bitrate <= 48:
+            hint = "僅供紀錄 (檔案極小，有機械音)"
+        elif bitrate <= 64:
+            hint = "節省空間首選 (適合 AI 辨識，人聲清晰)"
+        elif bitrate <= 96:
+            hint = "AI 辨識最佳平衡 (推薦：檔案小且保留細節)"
+        elif bitrate <= 128:
+            hint = "標準高品質 (與原音接近，適合一般聽感)"
+        elif bitrate <= 192:
+            hint = "高保真 (音質優異，適合含背景音樂需求)"
+        else:
+            hint = "無損等級 (檔案較大，適合收藏或專業需求)"
+        self.label_hint.configure(text=f"建議：{hint}")
 
     def update_prediction(self):
         if self.total_duration_secs > 0:
@@ -236,6 +272,7 @@ class AudioShrinkerApp(ctk.CTk):
         total_files = len(self.files)
         success_count = 0
         error_count = 0
+        errors = []
 
         for i, file_data in enumerate(self.files):
             if self.stop_event.is_set():
@@ -269,20 +306,25 @@ class AudioShrinkerApp(ctk.CTk):
                 success_count += 1
                 
             except Exception as e:
+                error_msg = f"{filename}: {str(e)}"
                 print(f"Error converting {path}: {e}")
+                errors.append(error_msg)
                 error_count += 1
 
         self.is_converting = False
-        self.after(0, lambda: self._conversion_finished(success_count, error_count, total_files))
+        self.after(0, lambda: self._conversion_finished(success_count, error_count, total_files, errors))
 
-    def _conversion_finished(self, success, errors, total):
+    def _conversion_finished(self, success, errors_count, total, error_list):
         self.progress.set(1.0)
         
         if self.stop_event.is_set():
             status_text = f"⚠️ 操作已取消 (完成 {success}/{total})"
-        elif errors > 0:
-            status_text = f"⚠️ 完成但有錯誤 (成功: {success}, 失敗: {errors})"
-            messagebox.showwarning("完成", f"處理結束\n成功: {success}\n失敗: {errors}")
+        elif errors_count > 0:
+            status_text = f"⚠️ 完成但有錯誤 (成功: {success}, 失敗: {errors_count})"
+            err_details = "\n".join(error_list[:5])
+            if len(error_list) > 5:
+                err_details += f"\n... 以及其他 {len(error_list)-5} 個錯誤"
+            messagebox.showwarning("完成", f"處理結束\n成功: {success}\n失敗: {errors_count}\n\n錯誤詳情:\n{err_details}")
         else:
             status_text = "✅ 全部完成！"
             messagebox.showinfo("成功", f"成功轉換所有 {success} 個檔案！")
