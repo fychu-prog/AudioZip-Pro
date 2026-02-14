@@ -1,69 +1,48 @@
-# Audio Shrinker Pro
+# AudioZip Pro 🎧
 
-A lightweight, powerful audio compression tool designed for **AI Speech-to-Text (STT)** and **meeting recordings**.
-Shrink massive audio files by **over 90%** while preserving high-clarity vocals optimized for AI transcription models like OpenAI Whisper.
+AudioZip Pro 是一款輕量且強大的音訊批次壓縮工具。它專為需要快速、大量壓縮錄音檔（如課堂錄音、會議記錄、訪談等）的使用者設計。透過簡單的調整，您可以大幅縮小音訊檔案體積，同時保持適合聽感或 AI 逐字稿辨識的音質。
 
-![Python](https://img.shields.io/badge/Python-3.8%2B-blue)
-![Platform](https://img.shields.io/badge/Platform-macOS%20%7C%20Windows-lightgrey)
-![License](https://img.shields.io/badge/License-MIT-green)
+![Preview](preview_screenshot.png) *(請在此處上傳您的程式截圖)*
 
-## ✨ Key Features
+## ✨ 主要特色
+- **批次處理：** 一次加入多個檔案，一鍵轉換。
+- **智慧預估：** 即時計算壓縮後的預估檔案大小。
+- **多語支援：** 提供 繁體中文、English、日本語 介面。
+- **品質調整：** 支援 32kbps 到 320kbps 的細膩調整，並附有專業建議提示。
+- **跨平台：** 支援 macOS 與 Windows。
 
-*   **Extreme Compression**: Compress 500MB WAV files to under 30MB MP3s, perfect for uploading and sharing.
-*   **AI-Optimized**: Default bitrate settings (64k-96k) are tuned for AI models (Whisper, Google STT) to ensure high accuracy.
-*   **Batch Processing**: Select multiple files and convert them automatically in a queue.
-*   **Cross-Platform**: Supports macOS and Windows with automatic environment detection.
-*   **Metadata Preservation**: Automatically keeps original tags (Artist, Title, Album, etc.).
-*   **Robust & Safe**: Built-in error handling prevents crashes and ensures file integrity.
-*   **Broad Format Support**: Supports MP3, M4A, WAV, FLAC, AIFF, OGG, and more.
+## 🚀 快速開始
 
-## 🚀 Quick Start (macOS App)
+### 1. 安裝必要組件 (FFmpeg)
+本工具的核心功能依賴於 **FFmpeg**。請根據您的作業系統安裝：
 
-1.  Navigate to the `dist` folder.
-2.  Locate `AudioShrinkerPro.app`.
-3.  **First Launch**: Right-click (or Control-click) the app icon and select "Open" to bypass security checks.
-4.  Drag & drop or select your audio files, adjust the quality slider, and click "Start Batch Conversion".
+- **macOS:**
+  ```bash
+  brew install ffmpeg
+  ```
+- **Windows:**
+  1. 到 [FFmpeg 官網](https://ffmpeg.org/download.html) 下載預編譯的 Windows 執行檔。
+  2. 解壓縮後，將 `bin` 資料夾路徑加入系統環境變數 `PATH` 中。
+  3. 或者，將 `ffmpeg.exe` 與 `ffprobe.exe` 直接放在此專案的根目錄下。
 
-## 🛠️ Development & Installation
-
-If you want to modify the code or run it on other platforms:
-
-### 1. Install Dependencies
+### 2. 安裝 Python 函式庫
+在終端機或命令提示字元執行：
 ```bash
 pip install -r requirements.txt
-# Or manually:
-pip install customtkinter pydub
 ```
 
-### 2. Install FFmpeg (Required)
-This tool relies on FFmpeg for audio processing.
-
-*   **macOS (Homebrew)**:
-    ```bash
-    brew install ffmpeg
-    ```
-*   **Windows**:
-    Download FFmpeg and add the `bin` folder to your system PATH.
-
-### 3. Run the Script
+### 3. 執行程式
 ```bash
-python audio_shrinker_ui.py
+python audiozip.py
 ```
 
-### 4. Build App (macOS)
-```bash
-pip install pyinstaller
-pyinstaller --name "AudioShrinkerPro" --onefile --windowed --add-data "$(python3 -c 'import customtkinter; print(customtkinter.__path__[0])'):customtkinter/" audio_shrinker_ui.py
-```
+## 🛠 使用建議 (Bitrate 選擇)
+- **64 kbps:** 節省空間首選，適合 AI 語音轉文字辨識，人聲依然清晰。
+- **96 kbps:** **推薦平衡點**，檔案小且保留較多音訊細節。
+- **128 kbps:** 標準高品質，與原音接近，適合一般聽感需求。
 
-## 🎚️ Bitrate Guide
+## ⚖️ 授權條款
+本專案採用 [MIT License](LICENSE)。
 
-| Bitrate | Best For | 1 Hour File Size |
-| :--- | :--- | :--- |
-| **32 kbps** | Record only, smallest size (robotic voice) | ~14 MB |
-| **64 kbps** | **Best for AI STT** (Clear vocals, tiny size) | **~28 MB** |
-| **96 kbps** | **Recommended** (Balance of AI & listening) | **~43 MB** |
-| **128 kbps**| Standard Quality (Music, Podcasts) | ~57 MB |
-
-## 📝 License
-MIT License
+---
+*Developed with ❤️ for efficient audio management.*
