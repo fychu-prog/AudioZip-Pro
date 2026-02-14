@@ -8,7 +8,7 @@ import customtkinter as ctk
 from tkinter import filedialog, messagebox
 from pydub import AudioSegment
 from pydub.utils import mediainfo
-from PIL import Image
+from PIL import Image, ImageTk
 
 # 修正 macOS 打包後的 PATH 問題
 os.environ["PATH"] += os.pathsep + "/usr/local/bin" + os.pathsep + "/opt/homebrew/bin" + os.pathsep + "/usr/bin"
@@ -54,7 +54,7 @@ class AudioZipApp(ctk.CTk):
             "hints": {
                 "32": "Voice Memo (Tiny size, low quality)",
                 "64": "Space Saving (Clear vocals, AI-ready)",
-                "96": "Best Balance (Recommended for general use)",
+                "96": "Best Balance (Recommended)",
                 "128": "High Quality (Standard audio)",
                 "192": "Ultra Quality (Good for music)",
                 "320": "Archive Quality (Lossless-like)"
@@ -202,8 +202,9 @@ class AudioZipApp(ctk.CTk):
             icon_path = os.path.join(os.path.dirname(__file__), "appicon.png")
             if os.path.exists(icon_path):
                 self.icon_image = Image.open(icon_path)
-                self.after(200, lambda: self.wm_iconphoto(True, ctk.CTkImage(light_image=self.icon_image, dark_image=self.icon_image)._light_image))
-        except:
+                self.tk_icon = ImageTk.PhotoImage(self.icon_image)
+                self.after(200, lambda: self.wm_iconphoto(True, self.tk_icon))
+        except Exception as e:
             pass
         
         # Fonts
@@ -331,7 +332,9 @@ class AudioZipApp(ctk.CTk):
         self.btn_run.configure(text=self.t("btn_run"))
         self.btn_cancel.configure(text=self.t("btn_cancel"))
         
-        if not self.is_converting and "..." not in self.label_status.cget("text"):
+        if not self.is_converting and "..." in self.label_status.cget("text"):
+             pass
+        else:
              self.label_status.configure(text=self.t("status_ready"))
         
         self.frame_files.configure(label_text=self.t("header_title"))
